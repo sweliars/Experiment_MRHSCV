@@ -22,33 +22,120 @@ The Source code in the Raspberry PI experiment in MRHSCV computational efficienc
 
 ## Overview
 
-This README aims to help reviewers and researchers reproduce the **MRHSCV** protocol implementation on the Raspberry Pi platform. It includes:
-
-1. Public implementation of core cryptographic primitives (signcryption, verification, etc.);
-2. Unified software stack (GMP/PBC/pypbc + ns-3 Python bindings + dependencies);
-3. One-click scripts and validation utilities ensuring reproducibility on **Raspberry Pi 4B/5 (64-bit OS)**.
+This README aims to help reviewers and researchers reproduce the **MRHSCV** protocol implementation on the Raspberry Pi platform. 
 
 ## Hardware and System
 
 * **SoC**: Raspberry Pi 4B (4/8GB) or Raspberry Pi 5 (recommended)
-* **Architecture**: aarch64 (64-bit)
-* **OS**: Raspberry Pi OS (64-bit) / Ubuntu Server 22.04 (ARM64)
-* **Compiler**: gcc/g++ ≥ 11
-* **Storage**: ≥ 32GB microSD or NVMe (for Pi 5)
+* **Architecture**: armv7l
+* **OS**: Ubuntu 20.04.5 LTS
+* **Compiler**: gcc/g++ ≥ 9.4.0, gmp ≥ 6.1.2
+* **Storage**: ≥ 32GB
 
-> Run `scripts/collect_sysinfo.sh` to log your system information.
 
 ## Software Dependencies
 
-* Python 3.8/3.10 (recommended: 3.10; for pypbc use 3.8)
-* System packages: `build-essential cmake git pkg-config libffi-dev libgmp-dev libmpfr-dev libmpc-dev`
-* PBC Library: `libpbc` (build from source)
-* Python packages: `virtualenv wheel cffi cryptography numpy pandas matplotlib cppyy`
-* ns-3 (≥ 3.44 with Python bindings)
+* Python 3.8(for pypbc use 3.8)
+* System dependencies: `m4, flex, bison`
+```bash
+sudo apt-get install m4
+sudo apt-get install flex
+sudo apt-get install bison
+```
 
-> Run [`scripts/bootstrap_pi.sh`](scripts/bootstrap_pi.sh) for automatic installation.
+### System packages: `GMP,PBC,pypbc`
+#### the install for GMP
+```bash
+wget https://gmplib.org/download/gmp/gmp-6.1.2.tar.lz
+lzip -d gmp-6.1.2.tar.lz
+tar -xvf gmp-6.1.2.tar
+cd gmp-6.1.2
 
-## Quick Start (5 Minutes)
+./configure
+make
+make check
+sudo make install
+```
+
+#### the install for PBC
+```bash
+wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz
+tar -xvf pbc-0.5.14.tar.gz
+cd pbc-0.5.14
+
+./configure
+make
+sudo make install
+```
+
+
+#### the install for pypbc
+```bash
+git clone https://github.com/debatem1/pypbc
+sudo python3 setup.py install
+sudo pip3 install pypbc
+```
+
+
+
+## Source Code Structure
+
+```
+src/
+├── Ali_scheme.py                    #  implementation of Bilinear Pairing-Based Hybrid Signcryption for Secure Heterogeneous Vehicular Communications
+├── Liu_scheme.py                    #  implementation of Mutual Heterogeneous Signcryption Schemes for 5G Network Slicings
+├── Luo_scheme.py                    #  implementation of Mutual heterogeneous signcryption schemes with different system parameters for 5G network slicings
+├── Niu_scheme.py                    #  implementation of Privacy-Preserving Mutual Heterogeneous Signcryption Schemes Based on 5G Network Slicing
+├── Ullah_scheme.py                  #  implementation of A Conditional Privacy Preserving Heterogeneous Signcryption Scheme for Internet of Vehicles
+├── Wang_scheme.py                   #  implementation of Efficient and Provably Secure Offline/Online Heterogeneous Signcryption Scheme for VANETs
+├── Our_scheme.py                    #  implementation of MRHSCV
+├── sender_80.py                     #  Sender-side (qbits=512, rbits=160): measures sender computation time only
+├── sender_112.py                    #  Sender-side (qbits=1024, rbits=224): measures sender computation time only
+├── sender_128.py                    #  Sender-side (qbits=1536, rbits=256): measures sender computation time only
+├── receiver_80.py                   #  Receiver-side (qbits=512, rbits=160): measures receiver computation time only
+├── receiver_112.py                  #  Receiver-side (qbits=1024, rbits=224): measures receiver computation time only
+├── receiver_128.py                  #  Receiver-side (qbits=1536, rbits=256): measures receiver computation time only
+├── main_80.py                       #  Sender and Receiver(qbits=512, rbits=160): measures total computation time
+├── main_112.py                      #  Sender and Receiver(qbits=1024, rbits=224): measures total computation time
+├── main_128.py                      #  Sender and Receiver(qbits=1536, rbits=256): measures total computation time
+├── utili.py                         # toolkit for implementation
+
+```
+
+
+
+
+## Quick Start
+The sender, receiver and overall execution time of different schemes can be measured simultaneously
+
+### 1) measures sender computation time
+
+
+```bash
+sudo python3 sender_80.py
+sudo python3 sender_112.py
+sudo python3 sender_128.py
+```
+
+
+
+### 2) measures receiver computation time
+
+```bash
+sudo python3 receiver_80.py
+sudo python3 receiver_112.py
+sudo python3 receiver_128.py
+```
+
+### 3) measures total computation time
+
+
+```bash
+sudo python3 main_80.py
+sudo python3 main_112.py
+sudo python3 main_128.py
+```
+
 
 ```bash
 # 0) Clone the repository
@@ -82,41 +169,6 @@ python sim/run_ns3_scenario.py --time 100 --pkt-size 200 --interval 1.0 \
 python viz/plot_latency.py artifacts/ns3_latency.csv --out figs/latency.png
 ```
 
-## Source Code Structure
-
-```
-mrhscv-pi/
-├── core/                    # MRHSCV core protocol implementation
-│   ├── keygen.py            # Key generation / parameter setup
-│   ├── signcrypt.py         # Signcryption interface
-│   ├── unsigncrypt.py       # Unsigncryption / verification
-│   ├── utils.py             # Utilities (hash, encode, serialize)
-│   └── params/              # Curve & PBC parameters (.param)
-├── sim/                     # ns-3 integration and simulation scripts
-│   ├── ns3_helpers.py       # Python helper (UdpEchoClientHelper, etc.)
-│   ├── run_ns3_scenario.py  # Main simulation script
-│   └── configs/             # Scenario configs
-├── bench/                   # Micro-benchmarks
-│   └── run_micro_bench.py
-├── viz/                     # Visualization scripts
-│   └── plot_latency.py
-├── scripts/                 # Automation scripts
-│   ├── bootstrap_pi.sh
-│   ├── build_pbc.sh
-│   ├── collect_sysinfo.sh
-│   └── one_click_reproduce.sh
-├── third_party/
-│   ├── pbc/                 # PBC source (optional submodule)
-│   └── pypbc/               # Python bindings
-├── data/                    # Topology and trace data
-│   ├── cangzhou.net.xml
-│   └── fcd_0_100s.xml
-├── artifacts/               # Logs, results, metadata
-├── figs/                    # Figures and plots
-├── requirements.txt
-├── CITATION.cff
-└── LICENSE
-```
 
 ## Detailed Setup Steps
 
